@@ -38,27 +38,25 @@ class FilterState:
 
 
 def get_customer_options() -> Dict[str, str]:
+    # Se vuoi, CUSTOMERS può restare per override manuale, ma ora non serve più
     if CUSTOMERS:
         return CUSTOMERS
-    df = fetch_customer_ids()
+
+    df = fetch_customers()
     if df.empty:
         return {}
-    return {row.customer_id: row.customer_id for row in df.itertuples()}
+
+    # chiave = nome leggibile, valore = id (UUID)
+    return {row.name: str(row.id) for row in df.itertuples()}
 
 
 @st.cache_data(ttl=300)
-def fetch_customer_ids() -> pd.DataFrame:
+def fetch_customers() -> pd.DataFrame:
     sql = """
-        SELECT DISTINCT customer_id
-        FROM (
-            SELECT customer_id FROM v_brand_mentions_flat
-            UNION
-            SELECT customer_id FROM v_source_mentions_flat
-            UNION
-            SELECT customer_id FROM v_ai_responses_flat
-        ) t
-        WHERE customer_id IS NOT NULL
-        ORDER BY customer_id
+        SELECT id, name
+        FROM customers
+        WHERE id IS NOT NULL
+        ORDER BY name
     """
     return run_query(sql)
 
