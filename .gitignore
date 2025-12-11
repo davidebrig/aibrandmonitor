@@ -1,2 +1,24 @@
-.streamlit/.streamlit/secrets.toml
+.streamlit/secrets.toml
 context_codex.txt
+
+# Python virtual env
+venv/
+.env/
+*.pyc
+__pycache__/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# macOS system files
+.DS_Store
+
+# VS Code environment
+.vscode/
+
+# cache files
+**/__pycache__/
+**/.ipynb_checkpoints/
+
+# Streamlit logs
+.streamlit/logs/
