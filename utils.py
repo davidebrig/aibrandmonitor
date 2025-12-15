@@ -239,11 +239,11 @@ def fetch_latest_ai_responses(filters: FilterState, question: str) -> pd.DataFra
         SELECT DISTINCT ON (llm) 
             llm, 
             date, 
-            response
+            risposta as response
         FROM v_ai_responses_flat
         WHERE {where_clause}
           AND ai_question = %(question)s
-          AND response IS NOT NULL
+          AND risposta IS NOT NULL
         ORDER BY llm, date DESC
     """
     return run_query(sql, params)
