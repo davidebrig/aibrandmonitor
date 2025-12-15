@@ -516,6 +516,7 @@ def render_login() -> None:
 
                     # Save to Session State
                     st.session_state["user_id"] = user_id
+                    st.session_state["user_email"] = user["user"]["email"]
                     st.session_state["access_token"] = access_token
                     st.session_state["customer_id"] = customer_id
                     st.session_state["logged_in"] = True
@@ -532,6 +533,9 @@ def main() -> None:
     # 2. Authenticated Flow
     # Logout Button in Sidebar
     with st.sidebar:
+        st.image("assets/logo.png", use_container_width=True)
+        st.divider()
+        st.write(f"Ciao **{st.session_state.get('user_email', 'User')}**")
         if st.button("Logout"):
             st.session_state.clear()
             st.rerun()
