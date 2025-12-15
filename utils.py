@@ -226,3 +226,60 @@ def fetch_ai_questions_analytics(filters: FilterState, my_brand: str, my_domain:
     )
     
     return final_df
+
+
+def fetch_latest_ai_responses(filters: FilterState, question: str) -> pd.DataFrame:
+    """Gets the latest raw response for each LLM for a specific question."""
+    where_clause, params = build_where_clause(filters)
+    params = params.copy()
+    params["question"] = question
+    
+    # We want the latest response text per LLM
+    sql = f"""
+        SELECT DISTINCT ON (llm) 
+            llm, 
+            date, 
+            response
+        FROM v_ai_responses_flat
+        WHERE {where_clause}
+          AND ai_question = %(question)s
+          AND response IS NOT NULL
+        ORDER BY llm, date DESC
+    """
+    return run_query(sql, params)
+
+
+def fetch_question_sources(filters: FilterState, question: str) -> pd.DataFrame:
+    """Gets list of sources for a specific question."""
+    where_clause, params = build_where_clause(filters)
+    params = params.copy()
+    params["question"] = question
+    
+    sql = f"""
+        SELECT date, url, llm
+        FROM v_source_mentions_flat
+        WHERE {where_clause}
+          AND ai_question = %(question)s
+          AND url IS NOT NULL
+        ORDER BY date DESC
+    """
+    return run_query(sql, params)
+
+
+def fetch_question_brand_timeline(filters: FilterState, question: str, brand: str) -> pd.DataFrame:
+    """Gets position timeline for brand on a specific question."""
+    where_clause, params = build_where_clause(filters)
+    params = params.copy()
+    params["question"] = question
+    params["brand"] = brand
+    
+    sql = f"""
+        SELECT date, llm, position
+        FROM v_brand_mentions_flat
+        WHERE {where_clause}
+          AND ai_question = %(question)s
+          AND brand = %(brand)s
+          AND position IS NOT NULL
+        ORDER BY date
+    """
+    return run_query(sql, params)

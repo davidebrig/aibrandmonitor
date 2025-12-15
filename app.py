@@ -14,6 +14,9 @@ from utils import (
     fetch_customers,
     fetch_date_bounds,
     fetch_distinct_column_values,
+    fetch_latest_ai_responses,
+    fetch_question_brand_timeline,
+    fetch_question_sources,
     format_avg,
     get_customer_options,
     run_query,
@@ -418,16 +421,71 @@ def render_ai_questions_tab(filters: FilterState) -> None:
     ]
     display_df = display_df[cols_order]
 
-    st.dataframe(
+        }
+    )
+
+    # --- Interactive Details ---
+    # Need to access selection state. Streamlit dataframe with on_select returns a selection object.
+    # To make it work nicely, we should use session state or just check the event.
+    
+    event = st.dataframe(
         display_df,
         use_container_width=True,
         hide_index=True,
+        selection_mode="single-row",
+        on_select="rerun",
+        key="ai_questions_table",
         column_config={
             "Intent Volume": st.column_config.NumberColumn(help="Sum of search volumes of associated keywords"),
             "Total Brand Mentions": st.column_config.NumberColumn(help="Distinct count of brands mentioned"),
             "% Relevance": st.column_config.TextColumn(help="My Brand Mentions / Total Brand Mentions (Distinct)"),
         }
     )
+
+    if event.selection and event.selection.rows:
+        selected_index = event.selection.rows[0]
+        selected_row = display_df.iloc[selected_index]
+        selected_question = selected_row["AI Question"]
+        
+        st.divider()
+        st.markdown(f"### Details for: *{selected_question}*")
+        
+        # 1. Timeline
+        st.markdown("#### Brand Timeline")
+        timeline_df = fetch_question_brand_timeline(filters, selected_question, selected_brand)
+        if not timeline_df.empty:
+            chart = (
+                alt.Chart(timeline_df)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("date:T", title="Date"),
+                    y=alt.Y("position:Q", title="Position", scale=alt.Scale(reverse=True)), # Rank 1 is top
+                    color=alt.Color("llm:N", title="LLM"),
+                    tooltip=["date", "llm", "position"]
+                )
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.info("No timeline data for this brand/question.")
+
+        # 2. Sources
+        st.markdown("#### Cited Sources")
+        sources_df = fetch_question_sources(filters, selected_question)
+        if not sources_df.empty:
+            sources_df["domain"] = sources_df["url"].apply(extract_domain)
+            st.dataframe(sources_df[["date", "llm", "domain", "url"]], use_container_width=True, hide_index=True)
+        else:
+            st.info("No sources found.")
+
+        # 3. Raw Responses
+        st.markdown("#### Latest Raw Responses")
+        responses_df = fetch_latest_ai_responses(filters, selected_question)
+        if not responses_df.empty:
+            for row in responses_df.itertuples():
+                with st.expander(f"{row.llm} ({row.date})"):
+                    st.markdown(row.response)
+        else:
+            st.info("No raw responses available.")
 
 
 def main() -> None:
