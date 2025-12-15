@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from urllib.parse import urlparse
 
 import pandas as pd
+import requests
 import streamlit as st
 from sqlalchemy import create_engine
 
@@ -283,3 +285,57 @@ def fetch_question_brand_timeline(filters: FilterState, question: str, brand: st
         ORDER BY date
     """
     return run_query(sql, params)
+
+
+def login_user(email: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    Logs in a user via Supabase Auth (REST API).
+    Returns the user object (including access_token) if successful, else None.
+    """
+    # Assuming secrets are available as st.secrets["supabase"]["project_url"] and generic anon key
+    # If using different structure, adjust accordingly.
+    try:
+        project_url = st.secrets["supabase"]["project_url"]
+        api_key = st.secrets["supabase"]["anon_key"]
+    except KeyError:
+        st.error("Supabase secrets not found. Please check .streamlit/secrets.toml")
+        return None
+    
+    auth_url = f"{project_url}/auth/v1/token?grant_type=password"
+    headers = {
+        "apikey": api_key,
+        "Content-Type": "application/json",
+    }
+    data = {
+        "email": email,
+        "password": password,
+    }
+    
+    try:
+        response = requests.post(auth_url, headers=headers, json=data)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.warning(f"Login failed: {response.json().get('error_description', 'Invalid credentials')}")
+            return None
+    except Exception as e:
+        st.error(f"An error occurred during login: {e}")
+        return None
+
+
+def get_user_customer_id(user_id: str) -> Optional[str]:
+    """
+    Fetches the customer_id associated with the user.
+    """
+    sql = """
+        SELECT customer_id
+        FROM user_customers
+        WHERE user_id = %(user_id)s
+    """
+    try:
+        df = run_query(sql, {"user_id": user_id})
+        if not df.empty and pd.notnull(df.iloc[0]["customer_id"]):
+            return str(df.iloc[0]["customer_id"])
+    except Exception:
+        pass
+    return None

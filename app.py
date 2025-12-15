@@ -19,6 +19,8 @@ from utils import (
     fetch_question_sources,
     format_avg,
     get_customer_options,
+    get_user_customer_id,
+    login_user,
     run_query,
     safe_int,
 )
@@ -485,15 +487,63 @@ def render_ai_questions_tab(filters: FilterState) -> None:
             st.info("No raw responses available.")
 
 
+def render_login() -> None:
+    st.markdown("## Login to AI Brand Monitor")
+    
+    with st.form("login_form"):
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+        
+        if submitted:
+            if not email or not password:
+                st.error("Please enter both email and password.")
+                return
+            
+            with st.spinner("Authenticating..."):
+                user = login_user(email, password)
+                if user:
+                    # Successful login
+                    user_id = user["user"]["id"]
+                    access_token = user["access_token"]
+                    
+                    # Resolve Customer
+                    customer_id = get_user_customer_id(user_id)
+                    
+                    if not customer_id:
+                        st.error("Login successful, but no customer is associated with this account. Please contact support.")
+                        return
+
+                    # Save to Session State
+                    st.session_state["user_id"] = user_id
+                    st.session_state["access_token"] = access_token
+                    st.session_state["customer_id"] = customer_id
+                    st.session_state["logged_in"] = True
+                    st.success("Login successful! Redirecting...")
+                    st.rerun()
+
+
 def main() -> None:
-    customer_options = get_customer_options()
-    if not customer_options:
-        st.warning("No customers found. Please populate the CUSTOMERS mapping.")
+    # 1. Check Authentication
+    if not st.session_state.get("logged_in"):
+        render_login()
         return
 
-    customer_label = st.sidebar.selectbox("Select Customer", list(customer_options.keys()))
-    customer_id = customer_options.get(customer_label)
+    # 2. Authenticated Flow
+    # Logout Button in Sidebar
+    with st.sidebar:
+        if st.button("Logout"):
+            st.session_state.clear()
+            st.rerun()
+            
+    customer_id = st.session_state.get("customer_id")
+    if not customer_id:
+        st.error("Session invalid. Please login again.")
+        st.session_state.clear()
+        return
 
+    # 3. Dashboard Logic (No Customer Selector)
+    
     min_date, max_date = (None, None)
     if customer_id:
         min_date, max_date = fetch_date_bounds(customer_id)
@@ -526,6 +576,7 @@ def main() -> None:
     selected_intents = st.sidebar.multiselect("Intent", intent_options)
     selected_tones = st.sidebar.multiselect("Tone", tone_options)
 
+    # Note: customer_id is fixed from session
     filters = FilterState(
         customer_id=customer_id,
         date_range=date_range,
