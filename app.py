@@ -421,9 +421,6 @@ def render_ai_questions_tab(filters: FilterState) -> None:
     ]
     display_df = display_df[cols_order]
 
-        }
-    )
-
     # --- Interactive Details ---
     # Need to access selection state. Streamlit dataframe with on_select returns a selection object.
     # To make it work nicely, we should use session state or just check the event.
