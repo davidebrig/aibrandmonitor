@@ -1,4 +1,4 @@
-.streamlit/secrets.toml
+# Codex Context file
 context_codex.txt
 
 # Python virtual env
