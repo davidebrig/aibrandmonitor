@@ -533,7 +533,7 @@ def main() -> None:
     # 2. Authenticated Flow
     # Logout Button in Sidebar
     with st.sidebar:
-        st.image("assets/logo.png", use_container_width=True)
+        st.image("assets/logo.png", width=120)
         st.divider()
         st.write(f"Ciao **{st.session_state.get('user_email', 'User')}**")
         if st.button("Logout"):
